@@ -163,32 +163,38 @@ express()
 
   //Order-Form Validation
 
-  .post("/order", (req, res) => {
+  .post("/order", async (req, res) => {
     const { order_summary } = req.body;
     if (!order_summary.length) {
       return res.status(400).send({ message: "Failure" });
     }
-    const isOrderSuccessful = _.flatten(order_summary).map((item) => {
-      if (!item.item_id || !item.quantity) {
-        return false;
+    try {
+      await client.connect();
+      const db = client.db("dragon");
+      const productData = await db.collection("items").find().toArray();
+      const isOrderSuccessful = _.flatten(order_summary).map((item) => {
+        if (!item.item_id || !item.quantity) {
+          return false;
+        }
+        return productData
+          .filter((product) => {
+            product._id === item.item_id;
+          })
+          .map((orderItem) => {
+            if (orderItem.numInStock - item.quantity >= 0) {
+              orderItem.numInStock -= item.quantity;
+              return true;
+            } else if (orderItem.numInStock - item.quantity <= 0) {
+              return false;
+            }
+          });
+      });
+      if (!_.flatten(isOrderSuccessful).includes(false)) {
+        await db.collection("orders").insertOne({ order_summary });
+        return res.status(200).send({ message: "Successful Purchase!" });
       }
-      return productData
-        .filter((product) => {
-          product._id === item.item_id;
-        })
-        .map((orderItem) => {
-          if (orderItem.numInStock - item.quantity >= 0) {
-            orderItem.numInStock -= item.quantity;
-            return true;
-          } else if (orderItem.numInStock - item.quantity <= 0) {
-            return false;
-          }
-        });
-    });
-    if (_.flatten(isOrderSuccessful).includes(false)) {
+    } catch (e) {
       return res.status(400).send({ message: "Failure" });
-    } else {
-      return res.status(200).send({ message: "Successful Purchase!" });
     }
   })
 
