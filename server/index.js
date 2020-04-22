@@ -4,7 +4,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const _ = require("lodash");
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 const client = new MongoClient("mongodb://localhost:27017", {
   useUnifiedTopology: true,
 });
@@ -189,9 +189,13 @@ express()
             }
           });
       });
+
       if (!_.flatten(isOrderSuccessful).includes(false)) {
-        await db.collection("orders").insertOne({ order_summary });
-        return res.status(200).send({ message: "Successful Purchase!" });
+        const id = new ObjectId();
+        await db.collection("orders").insertOne({ _id: id, order_summary });
+        return res
+          .status(200)
+          .send({ message: "Successful Purchase!", order_id: id });
       }
     } catch (e) {
       return res.status(400).send({ message: "Failure" });
