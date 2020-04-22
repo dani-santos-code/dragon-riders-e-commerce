@@ -15,7 +15,7 @@ import ErrorPage from "../ErrorPage/ErrorPage";
 
 function ConfirmPaymentModal(props) {
   const order = props.cartStateArray.map((item) => {
-    return { item_id: item.id, quantity: item.quantity };
+    return { item_id: item._id, quantity: item.quantity };
   });
   const [test, setTest] = useState(true);
   const [message, setMessage] = useState("");
