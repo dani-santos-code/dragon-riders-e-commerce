@@ -3,8 +3,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
-const companyData = require("./data/companies.json");
-const productData = require("./data/items.json");
+const companyData = require("./data/fixedCompanies.json");
+const productData = require("./data/fixedItems.json");
 const _ = require("lodash");
 const { simulateProblems, getCountryList } = require("./helpers.js");
 const PORT = 4000;
@@ -61,7 +61,7 @@ express()
             company.country.replace(" ", "").toLowerCase() ===
             country.replace(" ", "").toLowerCase()
           ) {
-            return company.id;
+            return company._id;
           }
         })
         .filter((id) => id !== undefined);
@@ -81,7 +81,7 @@ express()
   .get("/products/detail/:productId", (req, res) => {
     const { productId } = req.params;
     const product = productData.find(
-      (product) => product.id === parseInt(productId)
+      (product) => product._id === parseInt(productId)
     );
     if (product) {
       return simulateProblems(res, { product });
@@ -100,7 +100,7 @@ express()
           company.country.replace(" ", "").toLowerCase() ===
           country.toLowerCase()
         ) {
-          return company.id;
+          return company._id;
         }
       })
       .filter((id) => id !== undefined);
@@ -130,7 +130,9 @@ express()
         return false;
       }
       return productData
-        .filter((product) => product.id === item.item_id)
+        .filter((product) => {
+          product._id === item.item_id;
+        })
         .map((orderItem) => {
           if (orderItem.numInStock - item.quantity >= 0) {
             orderItem.numInStock -= item.quantity;
