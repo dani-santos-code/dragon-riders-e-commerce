@@ -3,7 +3,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
-// const productData = require("./data/fixedItems.json");
 const _ = require("lodash");
 const { MongoClient } = require("mongodb");
 const assert = require("assert");
@@ -55,12 +54,17 @@ express()
 
   .get("/companies/:country", async (req, res) => {
     const { country } = req.params;
-    const companiesByCountry = companyData.filter((company) => {
-      return (
-        company.country.replace(" ", "").toLowerCase() === country.toLowerCase()
-      );
-    });
-    return simulateProblems(res, { companies: companiesByCountry });
+    try {
+      const companiesByCountry = companyData.filter((company) => {
+        return (
+          company.country.replace(" ", "").toLowerCase() ===
+          country.toLowerCase()
+        );
+      });
+      return simulateProblems(res, { companies: companiesByCountry });
+    } catch (e) {
+      return simulateProblems(res, { error: e });
+    }
   })
 
   //----Gets the Products by each country----//
@@ -103,15 +107,20 @@ express()
     }
   })
 
-  .get("/products/detail/:productId", (req, res) => {
+  .get("/products/detail/:productId", async (req, res) => {
     const { productId } = req.params;
-    const product = productData.find(
-      (product) => product._id === parseInt(productId)
-    );
-    if (product) {
-      return simulateProblems(res, { product });
-    } else {
-      return simulateProblems(res, { message: "Product not found." });
+    try {
+      await client.connect();
+      const db = client.db("dragon");
+      const productData = await db.collection("items").find().toArray();
+      const product = productData.find(
+        (product) => product._id === parseInt(productId)
+      );
+      if (product) {
+        return simulateProblems(res, { product });
+      }
+    } catch (e) {
+      return simulateProblems(res, { message: "Product not found.", e });
     }
   })
 
