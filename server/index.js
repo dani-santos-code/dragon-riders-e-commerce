@@ -5,7 +5,6 @@ const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const _ = require("lodash");
 const { MongoClient } = require("mongodb");
-const assert = require("assert");
 const client = new MongoClient("mongodb://localhost:27017", {
   useUnifiedTopology: true,
 });
@@ -126,30 +125,40 @@ express()
 
   //---A countries Featured Products, Sorted By Lowest Price---//
 
-  .get("/countries/:country/featuredproducts", (req, res) => {
+  .get("/countries/:country/featuredproducts", async (req, res) => {
     const { country } = req.params;
-    const companiesIdByCountry = companyData
-      .map((company) => {
-        if (
-          company.country.replace(" ", "").toLowerCase() ===
-          country.toLowerCase()
-        ) {
-          return company._id;
-        }
-      })
-      .filter((id) => id !== undefined);
-    const productsByCountry = companiesIdByCountry.map((id) => {
-      return productData.filter((product) => {
-        return product.companyId === id;
+    try {
+      await client.connect();
+      const db = client.db("dragon");
+      const companyData = await db.collection("companies").find().toArray();
+      const productData = await db.collection("items").find().toArray();
+      const companiesIdByCountry = companyData
+        .map((company) => {
+          if (
+            company.country.replace(" ", "").toLowerCase() ===
+            country.toLowerCase()
+          ) {
+            return company._id;
+          }
+        })
+        .filter((id) => id !== undefined);
+      const productsByCountry = companiesIdByCountry.map((id) => {
+        return productData.filter((product) => {
+          return product.companyId === id;
+        });
       });
-    });
-    const lowestPrices = _.flatten(productsByCountry).filter((product) => {
-      if (product.numInStock > 0) {
-        let newPrice = product.price.slice(1);
-        return parseFloat(newPrice) < 20;
-      }
-    });
-    return simulateProblems(res, { features: lowestPrices });
+      const lowestPrices = _.flatten(productsByCountry).filter((product) => {
+        if (product.numInStock > 0) {
+          let newPrice = product.price.slice(1);
+          return parseFloat(newPrice) < 20;
+        }
+      });
+      return simulateProblems(res, { features: lowestPrices });
+    } catch (e) {
+      res.status(500).send({
+        error: e,
+      });
+    }
   })
 
   //Order-Form Validation
@@ -185,29 +194,39 @@ express()
 
   //---Gets Categories, Organized by Country---//
 
-  .get("/categories/:country", (req, res) => {
+  .get("/categories/:country", async (req, res) => {
     const { country } = req.params;
-    const companiesIdByCountry = companyData
-      .map((company) => {
-        if (
-          company.country.replace(" ", "").toLowerCase() ===
-          country.toLowerCase()
-        ) {
-          return company.id;
-        }
-      })
-      .filter((id) => id !== undefined);
-    const productsByCountry = companiesIdByCountry.map((id) => {
-      return productData.filter((product) => {
-        return product.companyId === id;
+    try {
+      await client.connect();
+      const db = client.db("dragon");
+      const companyData = await db.collection("companies").find().toArray();
+      const productData = await db.collection("items").find().toArray();
+      const companiesIdByCountry = companyData
+        .map((company) => {
+          if (
+            company.country.replace(" ", "").toLowerCase() ===
+            country.toLowerCase()
+          ) {
+            return company.id;
+          }
+        })
+        .filter((id) => id !== undefined);
+      const productsByCountry = companiesIdByCountry.map((id) => {
+        return productData.filter((product) => {
+          return product.companyId === id;
+        });
       });
-    });
-    const productsByCategories = _.flatten(productsByCountry).map((product) => {
-      return product.category;
-    });
-    return simulateProblems(res, {
-      categories: Array.from(new Set(productsByCategories)),
-    });
+      const productsByCategories = _.flatten(productsByCountry).map(
+        (product) => {
+          return product.category;
+        }
+      );
+      return simulateProblems(res, {
+        categories: Array.from(new Set(productsByCategories)),
+      });
+    } catch (e) {
+      res.send(500).json(e);
+    }
   })
 
   .listen(PORT, () => console.info(`Listening on port ${PORT}`));
